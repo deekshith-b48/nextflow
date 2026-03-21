@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: #0a0a0a;
+  color: #e5e5e5;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* React Flow overrides */
+.react-flow__renderer { background: transparent; }
+.react-flow__edge-path { stroke: #7c3aed; stroke-width: 2; }
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+@keyframes dashdraw {
+  to { stroke-dashoffset: -10; }
+}
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  border: 2px solid #7c3aed !important;
+  background: #1a1a1a !important;
+  border-radius: 50% !important;
+  transition: all 0.15s ease;
+}
+.react-flow__handle:hover,
+.react-flow__handle-connecting {
+  background: #7c3aed !important;
+  transform: scale(1.3);
+}
+.react-flow__handle-valid { background: #22c55e !important; border-color: #22c55e !important; }
+.react-flow__handle-invalid { background: #ef4444 !important; border-color: #ef4444 !important; }
+
+.react-flow__minimap {
+  background: #111111 !important;
+  border: 1px solid #2a2a2a !important;
+  border-radius: 8px !important;
+}
+.react-flow__minimap-mask { fill: rgba(10,10,10,0.6) !important; }
+.react-flow__minimap-node { fill: #7c3aed !important; }
+
+.react-flow__controls {
+  background: #111111 !important;
+  border: 1px solid #2a2a2a !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+.react-flow__controls button {
+  background: #111111 !important;
+  border-bottom: 1px solid #2a2a2a !important;
+  color: #e5e5e5 !important;
+}
+.react-flow__controls button:hover { background: #1a1a1a !important; }
+.react-flow__controls button svg { fill: #e5e5e5 !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #444; }
+
+/* Node pulse glow */
+.node-running {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 0 8px 2px rgba(124,58,237,0.4); }
+  50%      { box-shadow: 0 0 24px 8px rgba(124,58,237,0.8); }
+}
+
+/* Dot grid background */
+.dot-grid {
+  background-image: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+  background-size: 24px 24px;
+}
