@@ -2,7 +2,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { prisma, withRetry } from "@/lib/prisma";
 import { getExecutionLevels, hasCycle, resolveHandleValue, resolveMultipleImageInputs } from "@/lib/dag";
 import { tasks, runs } from "@trigger.dev/sdk/v3";
 import type { FlowNode, FlowEdge } from "@/types";
@@ -42,15 +42,15 @@ export async function POST(req: NextRequest) {
       : "PARTIAL"
     : "FULL";
 
-  // Create run record
-  const runRecord = await prisma.workflowRun.create({
+  // Create run record (withRetry handles Neon cold-start)
+  const runRecord = await withRetry(() => prisma.workflowRun.create({
     data: {
       workflowId,
       userId,
       scope,
       status: "RUNNING",
     },
-  });
+  }));
 
   // Start execution in background (don't await)
   executeWorkflow({

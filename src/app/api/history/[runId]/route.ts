@@ -1,7 +1,7 @@
 // src/app/api/history/[runId]/route.ts
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma, withRetry } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
@@ -10,10 +10,10 @@ export async function GET(
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const run = await prisma.workflowRun.findUnique({
+  const run = await withRetry(() => prisma.workflowRun.findUnique({
     where: { id: params.runId },
     include: { nodeRuns: { orderBy: { startedAt: "asc" } } },
-  });
+  }));
 
   if (!run || run.userId !== userId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
