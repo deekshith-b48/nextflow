@@ -37,10 +37,16 @@ export const UploadVideoNode = memo(function UploadVideoNode({
         const assembly = await res.json();
 
         let result = assembly;
-        while (result.ok !== "ASSEMBLY_COMPLETED" && result.ok !== "ASSEMBLY_ERROR") {
+        let attempts = 0;
+        while (result.ok !== "ASSEMBLY_COMPLETED" && result.ok !== "ASSEMBLY_ERROR" && attempts < 60) {
           await new Promise((r) => setTimeout(r, 2000));
           const p = await fetch(`https://api2.transloadit.com/assemblies/${result.assembly_id}`);
           result = await p.json();
+          attempts++;
+        }
+        if (attempts >= 60) {
+          updateNodeData(id, { status: "error", error: "Upload timed out after 2 minutes" });
+          return;
         }
 
         if (result.ok === "ASSEMBLY_ERROR") {

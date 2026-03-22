@@ -110,16 +110,31 @@ export const cropImageTask = task({
       }),
     });
 
+    if (!assemblyResp.ok) {
+      const errText = await assemblyResp.text();
+      throw new Error(`Transloadit API error ${assemblyResp.status}: ${errText}`);
+    }
+
     const assembly = await assemblyResp.json();
 
-    // Poll for completion
+    if (!assembly.assembly_id) {
+      throw new Error(`Transloadit did not return assembly_id. Response: ${JSON.stringify(assembly)}`);
+    }
+
+    // Poll for completion (max 60 attempts × 1s = 60s)
     let result = assembly;
-    while (result.ok !== "ASSEMBLY_COMPLETED" && result.ok !== "ASSEMBLY_ERROR") {
+    let attempts = 0;
+    while (result.ok !== "ASSEMBLY_COMPLETED" && result.ok !== "ASSEMBLY_ERROR" && attempts < 60) {
       await new Promise((r) => setTimeout(r, 1000));
       const pollResp = await fetch(
         `https://api2.transloadit.com/assemblies/${result.assembly_id}`
       );
       result = await pollResp.json();
+      attempts++;
+    }
+
+    if (attempts >= 60) {
+      throw new Error("Transloadit assembly timed out after 60 seconds");
     }
 
     if (result.ok === "ASSEMBLY_ERROR") {
@@ -128,7 +143,7 @@ export const cropImageTask = task({
 
     const outputFile = result.results?.crop?.[0];
     if (!outputFile?.ssl_url) {
-      throw new Error(`No output file from Transloadit assembly. Result: ${JSON.stringify(result.results)}`);
+      throw new Error(`No output from crop step. Available: ${Object.keys(result.results ?? {}).join(", ")}`);
     }
 
     return { output: outputFile.ssl_url };

@@ -39,21 +39,35 @@ export const LLMNode = memo(function LLMNode({ id, data }: NodeProps<LLMNodeData
           edges,
         }),
       });
-      const { runId } = await res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? `Execute failed (${res.status})`);
+      const { runId } = data;
 
-      // Poll for result
+      // Poll for result (timeout after 3 minutes)
+      const pollStart = Date.now();
       const pollInterval = setInterval(async () => {
-        const statusRes = await fetch(`/api/history/${runId}`);
-        const run = await statusRes.json();
-        const nodeRun = run.nodeRuns?.find((nr: any) => nr.nodeId === id);
+        try {
+          if (Date.now() - pollStart > 3 * 60 * 1000) {
+            clearInterval(pollInterval);
+            updateNodeStatus(id, "error", undefined, "Timed out waiting for result");
+            return;
+          }
+          const statusRes = await fetch(`/api/history/${runId}`);
+          if (!statusRes.ok) return;
+          const run = await statusRes.json();
+          const nodeRun = run.nodeRuns?.find((nr: any) => nr.nodeId === id);
+          if (!nodeRun) return;
 
-        if (nodeRun?.status === "SUCCESS") {
-          clearInterval(pollInterval);
-          const output = nodeRun.outputs?.output;
-          updateNodeData(id, { outputText: output, status: "success" });
-        } else if (nodeRun?.status === "FAILED") {
-          clearInterval(pollInterval);
-          updateNodeData(id, { status: "error", error: nodeRun.error });
+          if (nodeRun.status === "SUCCESS") {
+            clearInterval(pollInterval);
+            const output = nodeRun.outputs?.output;
+            updateNodeData(id, { outputText: output ?? "", status: "success" });
+          } else if (nodeRun.status === "FAILED") {
+            clearInterval(pollInterval);
+            updateNodeData(id, { status: "error", error: nodeRun.error ?? "Task failed" });
+          }
+        } catch {
+          // Network blip — keep polling
         }
       }, 1500);
     } catch (err) {

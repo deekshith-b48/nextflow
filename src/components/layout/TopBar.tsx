@@ -64,7 +64,9 @@ export function TopBar({ workflowId }: TopBarProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workflowId, nodes, edges }),
       });
-      const { runId } = await res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error ?? `Execute failed (${res.status})`);
+      const { runId } = data;
 
       // Add optimistic run to history
       addRunRecord({
@@ -76,12 +78,22 @@ export function TopBar({ workflowId }: TopBarProps) {
         nodeRuns: [],
       });
 
-      // Poll for completion
+      // Poll for completion (timeout after 5 minutes)
+      const pollStart = Date.now();
       const poll = setInterval(async () => {
-        const statusRes = await fetch(`/api/history/${runId}`);
-        const run = await statusRes.json();
+        try {
+          // Safety timeout — stop polling after 5 minutes
+          if (Date.now() - pollStart > 5 * 60 * 1000) {
+            clearInterval(poll);
+            setIsExecuting(false);
+            return;
+          }
 
-        if (run.status !== "RUNNING") {
+          const statusRes = await fetch(`/api/history/${runId}`);
+          if (!statusRes.ok) return; // transient error — try again next tick
+          const run = await statusRes.json();
+          if (!run?.status || run.status === "RUNNING") return;
+
           clearInterval(poll);
           updateRunRecord(runId, {
             status: run.status,
@@ -108,6 +120,8 @@ export function TopBar({ workflowId }: TopBarProps) {
               updateNodeStatus(nr.nodeId, "error", undefined, nr.error ?? "Execution failed");
             }
           }
+        } catch {
+          // Network blip — keep polling, don't get stuck
         }
       }, 2000);
     } catch (err) {
